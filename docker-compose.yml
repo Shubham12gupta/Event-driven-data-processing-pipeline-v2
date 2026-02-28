@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  api:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./api:/app
+      - ./reports:/app/reports   # 👈 THIS LINE IS IMPORTANT
+    command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    restart: always
+
+  worker:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./worker:/app
+      - ./reports:/app/reports
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      while true; do
+        echo 'Generating 6-hour stock market PDF report...' &&
+        python /app/reports/daily_report_pdf.py &&
+        sleep 21600;
+      done
+      "
+    restart: always
+  fetcher:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./fetcher:/app
+    command: sh -c "pip install -r requirements.txt && python fetch_stock.py"
+    depends_on:
+      - api
+    restart: always
+  redis:
+    image: redis:7
+    restart: always

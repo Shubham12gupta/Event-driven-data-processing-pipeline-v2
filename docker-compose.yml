@@ -1,12 +1,17 @@
-version: "3.9"
-
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always
+
   api:
-    image: python:3.11-slim
+    image: shubham12gupta/python:3.11-slim
     working_dir: /app
     volumes:
       - ./api:/app
-      - ./reports:/app/reports   # 👈 THIS LINE IS IMPORTANT
+      - ./reports:/app/reports
     command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
@@ -17,7 +22,7 @@ services:
     restart: always
 
   worker:
-    image: python:3.11-slim
+    image: shubham12gupta/python:3.11-slim
     working_dir: /app
     volumes:
       - ./worker:/app
@@ -29,22 +34,24 @@ services:
     command: >
       sh -c "
       pip install -r requirements.txt &&
+      pip install -r /app/reports/requirements.txt &&
+      echo 'Dependencies installed' &&
       while true; do
-        echo 'Generating 6-hour stock market PDF report...' &&
+        echo 'Checking if report should be generated...' &&
         python /app/reports/daily_report_pdf.py &&
         sleep 21600;
       done
       "
     restart: always
+
   fetcher:
-    image: python:3.11-slim
-    working_dir: /app
+    image: shubham12gupta/python:3.11-slim
+    working_dir: /app/fetcher
     volumes:
-      - ./fetcher:/app
+      - ./fetcher:/app/fetcher
+    environment:
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}   # ✅ use .env file, never hardcode
     command: sh -c "pip install -r requirements.txt && python fetch_stock.py"
     depends_on:
       - api
-    restart: always
-  redis:
-    image: redis:7
     restart: always

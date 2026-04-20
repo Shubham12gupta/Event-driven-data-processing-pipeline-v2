@@ -1,40 +1,59 @@
-import redis
-import json
+import redis, json
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
+import pytz
 
-# Redis connection
 REDIS_HOST = "redis"
 r = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 
-def generate_daily_report():
-    # Read processed events (not the queue)
-    events = r.lrange("processed_events", 0, -1)
+def is_market_day():
+    est = pytz.timezone("US/Eastern")
+    now = datetime.now(est)
+    return now.weekday() < 5
 
-    prices = defaultdict(list)
+def generate_daily_report():
+    if not is_market_day():
+        print(f"⏸ Today ({date.today()}) is not a trading day. Skipping.")
+        return
+
+    today_str = str(date.today())
+    events    = r.lrange("processed_events", 0, -1)
+    prices    = defaultdict(list)
 
     for event in events:
         data = json.loads(event)
-        prices[data["symbol"]].append(float(data["price"]))
+
+        # Only today's data
+        if not data["time"].startswith(today_str):
+            continue
+
+        price = float(data["price"])
+
+        # Reject invalid prices
+        if price <= 0:
+            continue
+
+        prices[data["symbol"]].append(price)
+
+    if not prices:
+        print(f"⚠️ No valid data for today ({today_str}). Skipping report.")
+        return
 
     report = {}
-
     for symbol, values in prices.items():
         report[symbol] = {
-            "date": str(date.today()),
-            "count": len(values),
+            "date":    today_str,
+            "count":   len(values),
             "average": round(sum(values) / len(values), 2),
-            "max": max(values),
-            "min": min(values)
+            "max":     max(values),
+            "min":     min(values)
         }
 
-    # Save report as JSON file
-    file_name = f"/app/reports/report_{date.today()}.json"
+    file_name = f"/app/reports/report_{today_str}.json"
     with open(file_name, "w") as f:
         json.dump(report, f, indent=2)
 
-    print(f"Daily report generated: {file_name}")
+    print(f"✅ Daily report generated: {file_name}")
 
 if __name__ == "__main__":
     generate_daily_report()
-

@@ -1,4 +1,5 @@
-<img width="979" height="831" alt="image" src="https://github.com/user-attachments/assets/1595870e-6780-455a-9b18-d504951bdd8d" />
+<img width="879" height="814" alt="image" src="https://github.com/user-attachments/assets/0a2b5ecb-ff36-440b-9a0b-40b3d1b91284" />
+
 
 📊 Event-Driven Stock Market Data Processing Pipeline
 📌 Overview

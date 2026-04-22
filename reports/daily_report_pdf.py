@@ -9,7 +9,7 @@ r = redis.Redis(host="redis", port=6379, decode_responses=True)
 
 ist = pytz.timezone("Asia/Kolkata")
 now_ist = datetime.now(ist)
-today_str = str(date.today())
+today_str = now_ist.strftime("%Y-%m-%d")
 snapshot_time = now_ist.strftime("%H:%M:%S")
 
 # Read today's data from Redis
